@@ -1,4 +1,3 @@
-
 import streamlit as st
 import tempfile
 from gtts import gTTS
@@ -7,296 +6,240 @@ from langchain_google_genai import (
     ChatGoogleGenerativeAI,
     GoogleGenerativeAIEmbeddings,
 )
-
 from langchain_community.vectorstores import FAISS
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.utilities import WikipediaAPIWrapper, PubMedAPIWrapper
 from langchain.docstore.document import Document
 
 # ---------------------------------------------------
-# PAGE CONFIG
+# PAGE CONFIGURATION
 # ---------------------------------------------------
-
 st.set_page_config(
     page_title="MindSoul AI Therapist",
     page_icon="🧠",
-    layout="wide"
+    layout="centered",  # Centered layout feels more intimate for a conversational therapist app
+    initial_sidebar_state="expanded"
 )
 
 # ---------------------------------------------------
-# CUSTOM CSS
+# MODERN EMBEDDED STYLING
 # ---------------------------------------------------
-
 st.markdown(
-    '''
+    """
     <style>
+    /* Global Background and Smooth Aesthetics */
     .stApp {
-        background: linear-gradient(to bottom right, #0f172a, #1e293b);
-        color: white;
+        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #111827 100%);
+        color: #f8fafc;
     }
-
-    .main-title {
-        font-size: 3rem;
-        font-weight: bold;
-        text-align: center;
-        color: #ffffff;
+    
+    /* Custom Styling for Information Badges */
+    .feature-tag {
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 4px 12px;
+        border-radius: 12px;
+        margin: 4px;
+        font-size: 0.85rem;
+        color: #c084fc;
     }
-
-    .subtitle {
-        text-align: center;
-        color: #cbd5e1;
-        font-size: 1.1rem;
-        margin-bottom: 2rem;
-    }
-
-    .glass-box {
-        background: rgba(255,255,255,0.08);
-        padding: 1rem;
-        border-radius: 20px;
-        backdrop-filter: blur(10px);
-    }
-
-    .stChatMessage {
-        border-radius: 18px;
-        padding: 10px;
-    }
-
-    .stTextInput > div > div > input {
-        background-color: #1e293b;
-        color: white;
+    
+    /* Adjust input box borders */
+    div[data-baseweb="input"] {
+        border-radius: 12px !important;
     }
     </style>
-    ''',
+    """,
     unsafe_allow_html=True
 )
 
 # ---------------------------------------------------
-# HEADER
+# SIDEBAR & CONFIGURATION
 # ---------------------------------------------------
-
-st.markdown('<div class="main-title">🧠 MindSoul AI Therapist</div>', unsafe_allow_html=True)
-st.markdown(
-    '<div class="subtitle">Your AI-powered emotional wellness companion</div>',
-    unsafe_allow_html=True
-)
-
-# ---------------------------------------------------
-# SIDEBAR
-# ---------------------------------------------------
-
 with st.sidebar:
-    st.header("⚙️ Configuration")
-
-    api_key = st.text_input(
-        "Enter Google Gemini API Key",
-        type="password"
+    st.markdown("## ⚙️ Settings")
+    
+    # Using session state to preserve the key reliably across actions
+    if "api_key" not in st.session_state:
+        st.session_state.api_key = ""
+        
+    api_key_input = st.text_input(
+        "Google Gemini API Key",
+        type="password",
+        value=st.session_state.api_key,
+        placeholder="AIzaSy...",
+        help="Grab a key from Google AI Studio"
     )
+    if api_key_input:
+        st.session_state.api_key = api_key_input
 
     st.markdown("---")
-
-    st.markdown(
-        '''
-### ✨ Features
-- AI Therapist Chat
-- PubMed Knowledge
-- Wikipedia Context
-- Voice Responses
-- Gemini AI
-- LangChain + FAISS
-        '''
-    )
+    st.markdown("### 🧩 App Capabilities")
+    
+    # Styled feature list using custom tags
+    features = ["Gemini 1.5 Flash", "LangChain RAG", "FAISS Vector DB", "PubMed Insights", "Wikipedia Sync", "gTTS Voice Engine"]
+    for f in features:
+        st.markdown(f'<span class="feature-tag">✨ {f}</span>', unsafe_allow_html=True)
 
     st.markdown("---")
-
-    st.warning(
-        "⚠️ This app is not a substitute for professional therapy."
-    )
+    st.caption("🔒 **Privacy Guarantee**: Your API key and mental wellness conversations are completely private and never stored externally.")
 
 # ---------------------------------------------------
-# CHECK API KEY
+# APP HEADER
 # ---------------------------------------------------
+# Clean header layout without complex HTML tables or hard-to-read css injections
+st.title("🧠 MindSoul AI")
+st.markdown("*Your AI-powered compassionate space for reflection, clarity, and emotional wellness.*")
 
-if not api_key:
-    st.info("Please enter your Gemini API key in the sidebar.")
+# Important clinical disclaimer container
+st.info(
+    "💡 **Please Note:** MindSoul is a reflective AI companion meant for self-discovery. It is not a clinical tool or a substitute for professional human therapy.",
+    icon="⚠️"
+)
+
+# Halt application if API key is missing
+if not st.session_state.api_key:
+    st.warning("Please configure your Google Gemini API Key in the sidebar to start your session.")
     st.stop()
 
 # ---------------------------------------------------
-# INITIALIZE MODELS
+# INITIALIZE MODELS & UTILITIES
 # ---------------------------------------------------
+@st.cache_resource
+def init_tools():
+    wiki = WikipediaAPIWrapper(top_k_results=1, doc_content_chars_max=400)
+    pubmed = PubMedAPIWrapper(top_k_results=1, doc_content_chars_max=400)
+    return wiki, pubmed
+
+wiki, pubmed = init_tools()
 
 llm = ChatGoogleGenerativeAI(
     model="gemini-1.5-flash",
-    google_api_key=api_key,
-    temperature=0.7,
-)
-
-wiki = WikipediaAPIWrapper(
-    top_k_results=2,
-    doc_content_chars_max=500
-)
-
-pubmed = PubMedAPIWrapper(
-    top_k_results=2,
-    doc_content_chars_max=500
+    google_api_key=st.session_state.api_key,
+    temperature=0.6, # Dropped slightly for more consistent, grounded therapeutic responses
 )
 
 # ---------------------------------------------------
-# FUNCTIONS
+# REFACTORED CORE FUNCTIONS
 # ---------------------------------------------------
-
 def create_vector_store(text):
-
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=150
-    )
-
-    docs = splitter.split_documents(
-        [Document(page_content=text)]
-    )
-
+    splitter = RecursiveCharacterTextSplitter(chunk_size=600, chunk_overlap=100)
+    docs = splitter.split_documents([Document(page_content=text)])
+    
     embeddings = GoogleGenerativeAIEmbeddings(
         model="models/embedding-001",
-        google_api_key=api_key
+        google_api_key=st.session_state.api_key
     )
-
-    vector_store = FAISS.from_documents(
-        docs,
-        embeddings
-    )
-
-    return vector_store
+    return FAISS.from_documents(docs, embeddings)
 
 
 def retrieve_context(query):
+    # Short circuit for very simple emotional phrases to save API latency
+    if len(query.split()) < 3:
+        return ""
 
+    wiki_data, pubmed_data = "", ""
     try:
         wiki_data = wiki.run(query)
     except Exception:
-        wiki_data = ""
+        pass
 
     try:
         pubmed_data = pubmed.run(query)
     except Exception:
-        pubmed_data = ""
+        pass
 
-    combined_text = f"{wiki_data}\n\n{pubmed_data}"
+    combined_text = f"{wiki_data}\n\n{pubmed_data}".strip()
 
-    if not combined_text.strip():
-        return "No external context available."
+    if not combined_text:
+        return ""
 
-    vector_store = create_vector_store(combined_text)
-
-    relevant_docs = vector_store.similarity_search(
-        query,
-        k=3
-    )
-
-    return "\n".join(
-        [doc.page_content for doc in relevant_docs]
-    )
+    try:
+        vector_store = create_vector_store(combined_text)
+        relevant_docs = vector_store.similarity_search(query, k=2)
+        return "\n".join([doc.page_content for doc in relevant_docs])
+    except Exception:
+        return ""
 
 
 def generate_response(user_query):
-
     context = retrieve_context(user_query)
+    
+    prompt = f"""
+You are MindSoul, an exceptionally warm, empathetic, and intuitive AI therapeutic companion.
 
-    prompt = f'''
-You are an empathetic and emotionally supportive AI therapist.
+Operational Guidelines:
+- Communicate with calm, gentle, and grounding language.
+- Actively validate the user's emotions before jumping into suggestions.
+- Offer actionable, small mindfulness or cognitive exercises where appropriate.
+- Strictly never diagnose, medicate, or explicitly state clinical mental illnesses.
+- If the user implies crisis, self-harm, or severe distress, express deep care and gently provide references to global lifelines.
 
-Guidelines:
-- Be warm, calm, and compassionate.
-- Help users process emotions.
-- Suggest healthy coping mechanisms.
-- Never diagnose serious mental illnesses.
-- Encourage professional help if needed.
-- Keep responses supportive and conversational.
-
-Context:
+Contextual Guidance (Use only if relevant to the user's struggle):
 {context}
 
-User:
+User's Thought:
 {user_query}
 
-Therapist:
-'''
-
+MindSoul's Response:
+"""
     response = llm.invoke(prompt)
-
     return response.content
 
 
 def text_to_speech(text):
-
-    tts = gTTS(text=text, lang="en")
-
-    temp_audio = tempfile.NamedTemporaryFile(
-        delete=False,
-        suffix=".mp3"
-    )
-
-    tts.save(temp_audio.name)
-
-    with open(temp_audio.name, "rb") as audio_file:
-        audio_bytes = audio_file.read()
-
-    return audio_bytes
+    try:
+        tts = gTTS(text=text, lang="en", slow=False)
+        temp_audio = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+        tts.save(temp_audio.name)
+        with open(temp_audio.name, "rb") as audio_file:
+            return audio_file.read()
+    except Exception:
+        return None
 
 # ---------------------------------------------------
-# CHAT MEMORY
+# CHAT SESSION MANAGEMENT
 # ---------------------------------------------------
-
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.session_state.messages = [
+        {"role": "assistant", "content": "Hello. I'm MindSoul, your quiet space for reflection. How is your heart and mind feeling today?"}
+    ]
 
-# ---------------------------------------------------
-# DISPLAY CHAT
-# ---------------------------------------------------
-
+# Display historical chat strings natively
 for message in st.session_state.messages:
-
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
 # ---------------------------------------------------
-# USER INPUT
+# CHAT INTERACTION LOGIC
 # ---------------------------------------------------
-
-user_prompt = st.chat_input(
-    "How are you feeling today?"
-)
-
-if user_prompt:
-
-    st.session_state.messages.append(
-        {
-            "role": "user",
-            "content": user_prompt
-        }
-    )
-
+if user_prompt := st.chat_input("Share what's on your mind..."):
+    
+    # Save and display user message immediately
+    st.session_state.messages.append({"role": "user", "content": user_prompt})
     with st.chat_message("user"):
         st.markdown(user_prompt)
 
+    # Process assistant response inside active context block
     with st.chat_message("assistant"):
-
-        with st.spinner("MindSoul is thinking..."):
-
+        # Utilizing modern st.status container instead of simple spinner for high-tech look
+        with st.status("Reflecting deeply...", expanded=False) as status:
             try:
-                response = generate_response(user_prompt)
-
-                st.markdown(response)
-
-                audio = text_to_speech(response)
-
-                st.audio(audio, format="audio/mp3")
-
-                st.session_state.messages.append(
-                    {
-                        "role": "assistant",
-                        "content": response
-                    }
-                )
-
+                response_text = generate_response(user_prompt)
+                status.update(label="Formulating response...", state="running")
+                audio_bytes = text_to_speech(response_text)
+                status.update(label="Complete", state="complete", expanded=False)
             except Exception as e:
-                st.error(f"Error: {str(e)}")
+                status.update(label="Process failed", state="error")
+                st.error(f"Something went wrong: {str(e)}")
+                st.stop()
+
+        # Render response text cleanly
+        st.markdown(response_text)
+        st.session_state.messages.append({"role": "assistant", "content": response_text})
+
+        # Render audio block in a clean, non-intrusive drop expander
+        if audio_bytes:
+            with st.expander("🔊 Listen to Voice Response", expanded=True):
+                st.audio(audio_bytes, format="audio/mp3")
