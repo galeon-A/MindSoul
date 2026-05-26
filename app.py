@@ -16,105 +16,74 @@ from langchain.docstore.document import Document
 # PAGE CONFIG
 # ---------------------------------------------------
 st.set_page_config(
-    page_title="MindSoul AI | Emotional Wellness Companion",
+    page_title="MindSoul AI Therapist",
     page_icon="🌿",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
 # ---------------------------------------------------
-# AESTHETIC NATURAL CUSTOM CSS
+# CUSTOM AESTHETIC THEMING (Natural Zen Colors)
 # ---------------------------------------------------
 st.markdown(
     '''
     <style>
-    /* Main app background - Deep Forest/Sage Gradient */
+    /* Main App Background & Text */
     .stApp {
-        background: linear-gradient(135deg, #14231c 0%, #1e352a 50%, #2d4a3e 100%);
-        color: #f4f6f5;
-        font-family: 'Inter', sans-serif;
+        background-color: #f4f6f4; /* Soft Sage/Alabaster tint */
+        color: #2c3e35; /* Deep slate green for high readability */
     }
 
-    /* Target headers globally to match aesthetic */
-    h1, h2, h3, h4, p {
-        color: #eef1f0 !important;
+    /* Sidebar Contrast Styling */
+    [data-testid="stSidebar"] {
+        background-color: #1e2925 !important; /* Deep Forest/Charcoal Contrast */
+    }
+    [data-testid="stSidebar"] * {
+        color: #e2e8f0 !important; /* Crisp, readable text inside sidebar */
+    }
+    [data-testid="stSidebar"] input {
+        color: #1e2925 !important; /* Dark text inside the API input field */
     }
 
-    /* Aesthetic Title Styling */
+    /* Header Typo */
     .main-title {
-        font-size: 2.8rem;
-        font-weight: 800;
+        font-family: 'Helvetica Neue', Inter, sans-serif;
+        font-size: 2.75rem;
+        font-weight: 700;
         text-align: center;
-        background: linear-gradient(90deg, #a3b899, #dbe7db);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: #1e2925;
         margin-top: 1rem;
-        margin-bottom: 0.2rem;
-        letter-spacing: -0.5px;
+        letter-spacing: -0.02em;
     }
 
     .subtitle {
+        font-family: 'Helvetica Neue', Inter, sans-serif;
         text-align: center;
-        color: #a7bfae !important;
-        font-size: 1.1rem;
-        font-weight: 300;
+        color: #5c6f65;
+        font-size: 1.15rem;
         margin-bottom: 2.5rem;
+        font-weight: 400;
     }
 
-    /* Earthy Glassmorphism Containers */
-    .glass-card {
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        padding: 1.5rem;
-        border-radius: 16px;
-        backdrop-filter: blur(12px);
-        margin-bottom: 1.5rem;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
-    }
-    
-    .feature-tag {
-        display: inline-block;
-        background: rgba(163, 184, 153, 0.15);
-        color: #c2d1be;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        margin: 4px;
-        border: 1px solid rgba(163, 184, 153, 0.2);
+    /* Clean Info Cards */
+    .feature-card {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 1.2rem;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        margin-bottom: 1rem;
     }
 
-    /* Modern Streamlit Elements Tuning */
+    /* Target standard Streamlit Chat message styles softly */
     .stChatMessage {
-        border-radius: 16px !important;
-        padding: 15px !important;
-        margin-bottom: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        background-color: #ffffff !important;
+        border: 1px solid #e1e8e4 !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
     
-    /* User chat bubble */
+    /* Target user message variation */
     [data-testid="stChatMessageUser"] {
-        background-color: rgba(45, 74, 62, 0.6) !important;
-    }
-    
-    /* Assistant chat bubble */
-    [data-testid="stChatMessageAssistant"] {
-        background-color: rgba(255, 255, 255, 0.05) !important;
-    }
-
-    /* Input styling tweaks */
-    .stTextInput > div > div > input {
-        background-color: #1c2e25 !important;
-        color: #eef1f0 !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
-        border-radius: 10px !important;
-    }
-    
-    /* Custom divider line */
-    .custom-hr {
-        border: 0;
-        height: 1px;
-        background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.15), rgba(255,255,255,0));
-        margin: 1.5rem 0;
+        background-color: #e8efe9 !important; /* Gentle green tint for user */
+        border: 1px solid #d4dfd6 !important;
     }
     </style>
     ''',
@@ -122,97 +91,100 @@ st.markdown(
 )
 
 # ---------------------------------------------------
-# HEADER SECTION
+# HEADER
 # ---------------------------------------------------
 st.markdown('<div class="main-title">🌿 MindSoul AI</div>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="subtitle">A serene, private space to process thoughts and find emotional balance.</div>',
+    '<div class="subtitle">A calm, supportive space for your emotional wellness</div>',
     unsafe_allow_html=True
 )
 
 # ---------------------------------------------------
-# SIDEBAR CONFIGURATION
+# SIDEBAR (High Contrast)
 # ---------------------------------------------------
 with st.sidebar:
-    st.markdown("### ⚙️ Sanctuary Control")
-    st.caption("Configure your privacy-first wellness experience.")
-    
+    st.markdown("<h2 style='margin-top:0;'>⚙️ Workspace Setup</h2>", unsafe_allow_html=True)
+
     api_key = st.text_input(
         "Google Gemini API Key",
         type="password",
         placeholder="AIzaSy..."
     )
 
-    st.markdown('<div class="custom-hr"></div>', unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
 
-    # Feature List styled with Earthy Tags
-    st.markdown("#### ✨ Engine Specs")
     st.markdown(
         '''
-        <span class="feature-tag">Gemini 1.5 Flash</span>
-        <span class="feature-tag">LangChain Hybrid Routing</span>
-        <span class="feature-tag">FAISS Embeddings</span>
-        <span class="feature-tag">PubMed Medical API</span>
-        <span class="feature-tag">gTTS Voice Engine</span>
-        ''', 
-        unsafe_allow_html=True
-    )
-
-    st.markdown('<div class="custom-hr"></div>', unsafe_allow_html=True)
-
-    # Clean, stylish disclaimer callout box
-    st.markdown(
-        '''
-        <div style="background: rgba(220, 100, 100, 0.1); border-left: 4px solid #dd6b20; padding: 12px; border-radius: 8px; font-size:0.85rem; color:#f6ad55;">
-            <strong>Disclaimer:</strong> This app is an AI companion designed for emotional reflection, not a medical device or professional clinical therapy substitute.
+        <div class="feature-card">
+            <h4 style="margin-top:0; color:#fff;">✨ Capabilities</h4>
+            <p style="font-size:0.9rem; line-height:1.4; margin:0;">
+                • Empathetic Chat Companion<br>
+                • PubMed Medical Insights<br>
+                • Wikipedia Reference Engine<br>
+                • Natural Voice Synthesis<br>
+                • RAG-driven Context (FAISS)
+            </p>
         </div>
         ''',
         unsafe_allow_html=True
     )
 
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    
+    st.caption(
+        "⚠️ Disclaimer: MindSoul is an AI companion designed for reflection, not a medical substitute for clinical therapy."
+    )
+
 # ---------------------------------------------------
-# INITIALIZE GATEWAY / ROUTING CHECK
+# CHECK API KEY
 # ---------------------------------------------------
 if not api_key:
-    st.markdown(
-        '''
-        <div class="glass-card" style="text-align: center; max-width: 600px; margin: 4rem auto;">
-            <h3 style="margin-top:0;">Welcome to MindSoul</h3>
-            <p style="color: #cbd5e1;">To open your secure emotional wellness room, please input your Google Gemini API Key in the sidebar interface.</p>
-        </div>
-        ''',
-        unsafe_allow_html=True
-    )
+    st.info("👋 Welcome! Please provide your Gemini API key in the sidebar configuration to begin your session.")
     st.stop()
 
 # ---------------------------------------------------
 # INITIALIZE MODELS
 # ---------------------------------------------------
-@st.cache_resource
-def init_apis(api_key):
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash",
-        google_api_key=api_key,
-        temperature=0.6,
-    )
-    wiki = WikipediaAPIWrapper(top_k_results=1, doc_content_chars_max=400)
-    pubmed = PubMedAPIWrapper(top_k_results=1, doc_content_chars_max=400)
-    return llm, wiki, pubmed
+llm = ChatGoogleGenerativeAI(
+    model="gemini-1.5-flash",
+    google_api_key=api_key,
+    temperature=0.7,
+)
 
-llm, wiki, pubmed = init_apis(api_key)
+wiki = WikipediaAPIWrapper(
+    top_k_results=2,
+    doc_content_chars_max=500
+)
+
+pubmed = PubMedAPIWrapper(
+    top_k_results=2,
+    doc_content_chars_max=500
+)
 
 # ---------------------------------------------------
-# CORE LOGIC AGENTS
+# FUNCTIONS
 # ---------------------------------------------------
 def create_vector_store(text):
-    splitter = RecursiveCharacterTextSplitter(chunk_size=600, chunk_overlap=100)
-    docs = splitter.split_documents([Document(page_content=text)])
-    
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=150
+    )
+
+    docs = splitter.split_documents(
+        [Document(page_content=text)]
+    )
+
     embeddings = GoogleGenerativeAIEmbeddings(
         model="models/embedding-001",
         google_api_key=api_key
     )
-    return FAISS.from_documents(docs, embeddings)
+
+    vector_store = FAISS.from_documents(
+        docs,
+        embeddings
+    )
+
+    return vector_store
 
 
 def retrieve_context(query):
@@ -226,33 +198,36 @@ def retrieve_context(query):
     except Exception:
         pubmed_data = ""
 
-    combined_text = f"{wiki_data}\n\n{pubmed_data}".strip()
+    combined_text = f"{wiki_data}\n\n{pubmed_data}"
 
-    # Fixed bug: Handle empty context returns explicitly without breaking vectorstore builds
-    if not combined_text:
-        return "No explicit scientific literature context retrieved."
+    if not combined_text.strip():
+        return "No external context available."
 
-    try:
-        vector_store = create_vector_store(combined_text)
-        relevant_docs = vector_store.similarity_search(query, k=2)
-        return "\n".join([doc.page_content for doc in relevant_docs])
-    except Exception:
-        return "No supplementary medical context parsing required."
+    vector_store = create_vector_store(combined_text)
+
+    relevant_docs = vector_store.similarity_search(
+        query,
+        k=3
+    )
+
+    return "\n".join(
+        [doc.page_content for doc in relevant_docs]
+    )
 
 
 def generate_response(user_query):
     context = retrieve_context(user_query)
 
     prompt = f'''
-You are an empathetic, gentle, and emotionally supportive AI therapeutic advisor.
+You are an empathetic and emotionally supportive AI therapist.
 
 Guidelines:
-- Keep your tone warm, calm, soothing, and grounded.
-- Help the user explore their feelings without judgment.
-- Suggest constructive, low-stakes mindfulness or coping strategies.
-- Never issue diagnoses or interpret symptoms as specific psychological illness.
-- Seamlessly loop in references to the provided medical context only if it is explicitly helpful.
-- Gently remind them to speak with professionals if the query implies safety risks.
+- Be warm, calm, and compassionate.
+- Help users process emotions.
+- Suggest healthy coping mechanisms.
+- Never diagnose serious mental illnesses.
+- Encourage professional help if needed.
+- Keep responses supportive and conversational.
 
 Context:
 {context}
@@ -267,52 +242,70 @@ Therapist:
 
 
 def text_to_speech(text):
-    tts = gTTS(text=text, lang="en", slow=False)
-    temp_audio = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+    tts = gTTS(text=text, lang="en")
+
+    temp_audio = tempfile.NamedTemporaryFile(
+        delete=False,
+        suffix=".mp3"
+    )
+
     tts.save(temp_audio.name)
-    
+
     with open(temp_audio.name, "rb") as audio_file:
         audio_bytes = audio_file.read()
+
     return audio_bytes
 
 # ---------------------------------------------------
-# CHAT SESSION LIFE CYCLE
+# CHAT MEMORY
 # ---------------------------------------------------
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Layout wrapper to keep content beautifully spaced
-main_container = st.container()
+# ---------------------------------------------------
+# DISPLAY CHAT
+# ---------------------------------------------------
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-with main_container:
-    # Display historical conversation transcript
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
-# User Chat Input interaction field
-user_prompt = st.chat_input("Exhale your thoughts here... How are you truly feeling?")
+# ---------------------------------------------------
+# USER INPUT & RUNTIME
+# ---------------------------------------------------
+user_prompt = st.chat_input(
+    "What is on your mind today?"
+)
 
 if user_prompt:
-    # Append User prompt state
-    st.session_state.messages.append({"role": "user", "content": user_prompt})
-    with main_container:
-        with st.chat_message("user"):
-            st.markdown(user_prompt)
+    # Append User Message
+    st.session_state.messages.append(
+        {
+            "role": "user",
+            "content": user_prompt
+        }
+    )
 
-        # AI Agent Thought-Loop generation
-        with st.chat_message("assistant"):
-            with st.spinner("Listening deeply..."):
-                try:
-                    response = generate_response(user_prompt)
-                    st.markdown(response)
-                    
-                    # Modern compact audio presentation
-                    audio = text_to_speech(response)
-                    st.audio(audio, format="audio/mp3")
-                    
-                    # Persist response to internal history
-                    st.session_state.messages.append({"role": "assistant", "content": response})
-                    
-                except Exception as e:
-                    st.error(f"Apologies, an unexpected disruption occurred: {str(e)}")
+    with st.chat_message("user"):
+        st.markdown(user_prompt)
+
+    # Process & Generate Assistant Response
+    with st.chat_message("assistant"):
+        with st.spinner("Listening mindfully..."):
+            try:
+                response = generate_response(user_prompt)
+                st.markdown(response)
+
+                # Audio generation
+                audio = text_to_speech(response)
+                st.audio(audio, format="audio/mp3")
+
+                # Save Response State
+                st.session_state.messages.append(
+                    {
+                        "role": "assistant",
+                        "content": response
+                    }
+                )
+
+            except Exception as e:
+                st.error(f"Something went wrong: {str(e)}")
